@@ -17,13 +17,13 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                  - os: ubuntu-20.04
+                  - os: ubuntu-22.04
                     make: test-debug
-                    info: g++-9 + test-debug
+                    info: g++-11 + test-debug
 
-                  - os: ubuntu-20.04
+                  - os: ubuntu-22.04
                     make: test-release
-                    info: g++-9 + test-release
+                    info: g++-11 + test-release
 
         name: '${{matrix.os}}: ${{matrix.info}}'
         runs-on: ${{matrix.os}}
@@ -48,6 +48,11 @@ jobs:
                 sudo apt update
                 sudo apt install --allow-downgrades -y pycodestyle postgresql $(cat third_party/userver/scripts/docs/en/deps/${{matrix.os}}.md | tr '\n' ' ')
 
+          - name: Reinstall postgres 14
+            run: |
+                sudo apt purge libpq5 libpq-dev postgresql-*
+                sudo apt install -y postgresql-14 postgresql-client-14 postgresql-server-dev-14
+
           - name: Setup ccache
             run: |
                 ccache -M 2.0GB
@@ -56,12 +61,6 @@ jobs:
           - name: Run postgresql
             if: matrix.make == 'test-release'
             run: |
-                sudo service postgresql@14-main stop
-                sudo service postgresql@12-main stop
-                sudo sed -i 's/5433/5432/g' /etc/postgresql/12/main/postgresql.conf
-                sudo sed -i 's/5432/5433/g' /etc/postgresql/14/main/postgresql.conf
-                sudo service postgresql stop
-                sudo service postgresql@12-main restart
                 pg_lsclusters
                 sudo -u postgres psql --command="CREATE USER uservice_dynconf PASSWORD 'password'" --command="\du"
                 sudo -u postgres createdb --owner=uservice_dynconf uservice_dynconf
